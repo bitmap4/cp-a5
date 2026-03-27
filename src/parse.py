@@ -105,11 +105,18 @@ class Agenda:
         return len(self._items) - self._next
 
     def push(self, item: Item, weight: float, backpointer: Any = None) -> None:
-        """Add item, or update if a better weight is found (O(1) with dict lookup)."""
+        """Add item, or update if a better weight is found (O(1) with dict lookup).
+        If the item was already processed (popped) and we find a better weight,
+        re-add it to the agenda for reprocessing."""
         if item in self._index:
             if weight < self._weights[item]:
                 self._weights[item] = weight
                 self._backpointers[item] = backpointer
+                # If already popped, re-add for reprocessing
+                idx = self._index[item]
+                if idx < self._next:
+                    self._items.append(item)
+                    self._index[item] = len(self._items) - 1
         else:
             self._items.append(item)
             self._index[item] = len(self._items) - 1
@@ -330,7 +337,7 @@ def main():
                 if result is not None:
                     weight, tree = result
                     print(tree)
-                    log.debug(f"Weight: {weight:.4f} (-log2 prob)")
+                    print(weight)
                     log.debug(f"Prob:   {2**(-weight):.6f}")
                 else:
                     print("NONE")
