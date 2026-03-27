@@ -9,6 +9,7 @@ Found in [report.pdf](report.pdf).
 ./parse.py -v foo.gr foo.sen         # verbose (shows weights, profile)
 ./parse.py --chart foo.gr foo.sen    # print the Earley chart
 ./parse.py -s S foo.gr foo.sen       # use S as start symbol instead of ROOT
+./parse.py foo.gr foo.sen --debug    # print spans instead of weights
 ```
 
 ## Key results

@@ -49,6 +49,10 @@ def parse_args() -> argparse.Namespace:
         "--chart", action="store_true", default=False,
         help="Print the Earley chart after parsing"
     )
+    parser.add_argument(
+        "--debug", action="store_true", default=False,
+        help="Print plain tree and span tree instead of tree and weight"
+    )
     return parser.parse_args()
 
 
@@ -197,8 +201,8 @@ class EarleyChart:
                 return True
         return False
 
-    def get_best_parse(self) -> Optional[Tuple[float, str]]:
-        """Return (weight, tree_string) for the best parse, or None."""
+    def get_best_parse(self) -> Optional[Tuple[float, str, str]]:
+        """Return (weight, plain_tree, span_tree) for the best parse, or None."""
         best_item = None
         best_weight = float('inf')
         for item in self.cols[-1].all():
@@ -211,10 +215,11 @@ class EarleyChart:
                     best_item = item
         if best_item is None:
             return None
-        tree = self._build_tree(best_item, len(self.tokens))
-        return (best_weight, tree)
+        plain_tree = self._build_tree(best_item, len(self.tokens), with_spans=False)
+        span_tree = self._build_tree(best_item, len(self.tokens), with_spans=True)
+        return (best_weight, plain_tree, span_tree)
 
-    def _build_tree(self, item: Item, col_idx: int) -> str:
+    def _build_tree(self, item: Item, col_idx: int, with_spans: bool = False) -> str:
         """Reconstruct parse tree by following backpointers from a completed item."""
         children = []
         cur_item = item
@@ -232,13 +237,18 @@ class EarleyChart:
             else:
                 # ATTACH: child_info is (completed_item, col_of_completed_item)
                 attached_item, attached_col = child_info
-                children.append(self._build_tree(attached_item, attached_col))
+                children.append(self._build_tree(attached_item, attached_col, with_spans=with_spans))
 
             cur_item = prev_item
             cur_col = prev_col
 
         children.reverse()
-        return "(" + item.rule.lhs + " " + " ".join(children) + ")"
+        node_label = item.rule.lhs
+        if with_spans:
+            node_label = f"{node_label} [{item.start_position},{col_idx}]"
+        if children:
+            return "(" + node_label + " " + " ".join(children) + ")"
+        return "(" + node_label + ")"
 
     def _run_earley(self) -> None:
         """Run the Earley algorithm to fill the chart."""
@@ -335,9 +345,12 @@ def main():
                     chart.print_chart()
                 result = chart.get_best_parse()
                 if result is not None:
-                    weight, tree = result
+                    weight, tree, tree_with_spans = result
                     print(tree)
-                    print(weight)
+                    if args.debug:
+                        print(tree_with_spans)
+                    else:
+                        print(weight)
                     log.debug(f"Prob:   {2**(-weight):.6f}")
                 else:
                     print("NONE")
